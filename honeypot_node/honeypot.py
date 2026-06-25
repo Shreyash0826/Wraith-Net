@@ -1,5 +1,7 @@
 import socket
 import logging
+import json
+from datetime import datetime, timezone
 
 # Configuration
 BIND_IP = "0.0.0.0"
@@ -10,7 +12,7 @@ SSH_BANNER = b"SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.3\r\n"
 logging.basicConfig(
     filename='honeypot.log',
     level=logging.INFO,
-    format='%(asctime)s - %(message)s'
+    format='%(message)s' # We store the JSON string directly
 )
 
 def start_honeypot():
@@ -21,30 +23,30 @@ def start_honeypot():
 
     while True:
         client, addr = server.accept()
-        log_msg = f"Connection received from {addr[0]}:{addr[1]}"
         
-        # Print to console and log to file
-        print(f"[!] {log_msg}")
-        logging.info(log_msg)
-
-        # 1. Send the bait
-        client.send(SSH_BANNER)
-        
-        # 2. Capture the payload (The "Exploit" attempt)
+        # Capture raw data
+        payload = ""
         try:
-            # Set a small timeout so the script doesn't hang forever
             client.settimeout(5.0)
-            data = client.recv(1024) 
-            if data:
-                payload_msg = f"Payload from {addr[0]}: {data.decode(errors='ignore').strip()}"
-                print(f"[+] {payload_msg}")
-                logging.info(payload_msg)
-        except socket.timeout:
-            print(f"[-] Connection from {addr[0]} timed out waiting for payload.")
-        except Exception as e:
-            print(f"[-] Error receiving data: {e}")
+            client.send(SSH_BANNER)
+            data = client.recv(1024)
+            payload = data.decode(errors='ignore').strip()
+        except Exception:
+            payload = "NO_PAYLOAD"
         
-        # 3. Close the connection
+        # Construct JSON log using timezone-aware UTC
+        log_entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source_ip": addr[0],
+            "source_port": addr[1],
+            "target_port": BIND_PORT,
+            "payload": payload
+        }
+        
+        # Log as a JSON string
+        logging.info(json.dumps(log_entry))
+        print(f"[+] Logged event: {log_entry}")
+        
         client.close()
 
 if __name__ == "__main__":
