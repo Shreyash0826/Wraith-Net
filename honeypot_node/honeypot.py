@@ -2,6 +2,8 @@ import socket
 import logging
 import json
 import threading
+import signal
+import sys
 from datetime import datetime, timezone
 
 # Configuration
@@ -11,8 +13,11 @@ SSH_BANNER = b"SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.3\r\n"
 
 logging.basicConfig(filename='honeypot.log', level=logging.INFO, format='%(message)s')
 
+def signal_handler(sig, frame):
+    print("\n[*] Shutting down honeypot cleanly...")
+    sys.exit(0)
+
 def handle_client(client_socket, addr):
-    """Function to handle individual client connections in a thread."""
     payload = ""
     try:
         client_socket.settimeout(5.0)
@@ -31,20 +36,21 @@ def handle_client(client_socket, addr):
     }
     
     logging.info(json.dumps(log_entry))
-    print(f"[+] Thread handled event from {addr[0]}: {log_entry['payload']}")
     client_socket.close()
 
 def start_honeypot():
+    # Register signal handler for Ctrl+C
+    signal.signal(signal.SIGINT, signal_handler)
+    
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Enable address reuse
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((BIND_IP, BIND_PORT))
-    server.listen(10) # Higher backlog for concurrent attempts
-    print(f"[*] Honeypot listening on {BIND_IP}:{BIND_PORT}...")
+    server.listen(10)
+    print(f"[*] Honeypot active on {BIND_IP}:{BIND_PORT}. Press Ctrl+C to stop.")
 
     while True:
         client, addr = server.accept()
-        print(f"[!] New connection from {addr[0]}:{addr[1]}")
-        
-        # Start a new thread for this connection
         client_thread = threading.Thread(target=handle_client, args=(client, addr))
         client_thread.start()
 
