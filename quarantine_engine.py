@@ -3,6 +3,7 @@ import json
 import subprocess
 import logging
 from datetime import datetime
+from config import WHITELIST, THREAT_KEYWORDS, LOG_FILE, QUARANTINE_LOG
 
 # Setup Forensic Logging
 logging.basicConfig(
