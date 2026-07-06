@@ -3,7 +3,10 @@ import json
 import subprocess
 import logging
 from datetime import datetime
+# Import your centralized configs
 from config import WHITELIST, THREAT_KEYWORDS, LOG_FILE, QUARANTINE_LOG
+# Import the new Intelligence module
+from intelligence import BehaviorTracker
 
 # Setup Forensic Logging
 logging.basicConfig(
@@ -12,16 +15,15 @@ logging.basicConfig(
     format='%(asctime)s | %(levelname)s | %(message)s'
 )
 
-LOG_FILE = "honeypot.log"
-THREAT_KEYWORDS = ["root", "admin", "nmap", "cat /etc/passwd"]
-WHITELIST = ["127.0.0.1", "10.223.142.11", "192.168.56.101", "172.17.0.1", "172.18.0.1"] 
+# Initialize the Brain
+tracker = BehaviorTracker()
 
-def log_incident(ip, payload):
-    message = f"BLOCKING IP: {ip} | TRIGGER: {payload}"
+def log_incident(ip, payload, score):
+    message = f"BLOCKING IP: {ip} | TRIGGER: {payload} | FINAL SCORE: {score}"
     logging.info(message)
     print(f"[!] Logged: {message}")
 
-def block_ip(ip_address, payload):
+def block_ip(ip_address, payload, score):
     if ip_address in WHITELIST:
         return
     
@@ -31,10 +33,10 @@ def block_ip(ip_address, payload):
     
     if result.returncode != 0:
         subprocess.run(["sudo", "iptables", "-A", "INPUT", "-s", ip_address, "-j", "DROP"])
-        log_incident(ip_address, payload) # Log only on new blocks
+        log_incident(ip_address, payload, score) 
 
 def start_watcher():
-    print("[*] Quarantine Engine (Forensic Mode) active...")
+    print("[*] Quarantine Engine (Intelligence Mode) active...")
     with open(LOG_FILE, "r") as f:
         f.seek(0, 2)
         while True:
@@ -44,9 +46,17 @@ def start_watcher():
                 continue
             try:
                 data = json.loads(line.strip())
+                source_ip = data.get('source_ip')
                 payload = data.get("payload", "").lower()
-                if any(k in payload for k in THREAT_KEYWORDS):
-                    block_ip(data['source_ip'], payload)
+                
+                # Get the threat score from the Brain
+                score = tracker.analyze_payload(source_ip, payload)
+                print(f"[*] IP: {source_ip} | Threat Score: {score} | Payload: {payload}")
+                
+                # Dynamic Thresholding: Block if score is 15 or higher
+                if score >= 15:
+                    block_ip(source_ip, payload, score)
+                    
             except json.JSONDecodeError:
                 pass
 
