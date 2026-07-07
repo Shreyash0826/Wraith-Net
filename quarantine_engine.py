@@ -36,7 +36,7 @@ def block_ip(ip_address, payload, score):
         log_incident(ip_address, payload, score) 
 
 def start_watcher():
-    print("[*] Quarantine Engine (Intelligence Mode) active...")
+    print("[*] Quarantine Engine (Dynamic Intelligence Mode) active...")
     with open(LOG_FILE, "r") as f:
         f.seek(0, 2)
         while True:
@@ -51,6 +51,8 @@ def start_watcher():
                 
                 # Get the threat score from the Brain
                 score = tracker.analyze_payload(source_ip, payload)
+                
+                # Visual feedback for testing velocity/scoring
                 print(f"[*] IP: {source_ip} | Threat Score: {score} | Payload: {payload}")
                 
                 # Dynamic Thresholding: Block if score is 15 or higher
@@ -59,6 +61,8 @@ def start_watcher():
                     
             except json.JSONDecodeError:
                 pass
+            except Exception as e:
+                print(f"[!] Error processing log: {e}")
 
 if __name__ == "__main__":
     start_watcher()
