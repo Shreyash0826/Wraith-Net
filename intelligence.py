@@ -37,3 +37,14 @@ class BehaviorTracker:
             
         data['last_seen'] = current_time
         return data['score']
+
+    def get_confidence_level(self, score):
+        """Categorizes the threat based on the accumulated score."""
+        if score >= 20: 
+            return "CRITICAL"
+        elif score >= 15: 
+            return "HIGH"
+        elif score >= 10: 
+            return "MEDIUM"
+        else: 
+            return "LOW"
