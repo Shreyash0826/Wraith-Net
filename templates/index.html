@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wraith-Net Watchtower</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-dark text-light">
+    <div class="container mt-5">
+        <h1>Wraith-Net Watchtower</h1>
+        <table class="table table-dark table-hover mt-4">
+            <thead>
+                <tr>
+                    <th>Timestamp</th><th>IP</th><th>Reason</th><th>Confidence</th>
+                </tr>
+            </thead>
+            <tbody id="alert-body"></tbody>
+        </table>
+    </div>
+    <script>
+        async function fetchAlerts() {
+            const res = await fetch('/api/alerts');
+            const data = await res.json();
+            const body = document.getElementById('alert-body');
+            body.innerHTML = data.map(a => `
+                <tr>
+                    <td>${a.timestamp.split('T')[1].split('.')[0]}</td>
+                    <td>${a.ip}</td>
+                    <td>${a.reason}</td>
+                    <td><span class="badge ${a.final_score > 15 ? 'bg-danger':'bg-warning'}">${a.final_score}</span></td>
+                </tr>
+            `).join('');
+        }
+        setInterval(fetchAlerts, 2000); // Refresh every 2s
+    </script>
+</body>
+</html>
