@@ -1,21 +1,18 @@
+# quarantine_engine.py
 import time
 import json
 import subprocess
 import logging
 from datetime import datetime
-# Import your centralized configs
 from config import WHITELIST, THREAT_KEYWORDS, LOG_FILE, QUARANTINE_LOG
-# Import the new Intelligence module
 from intelligence import BehaviorTracker
 
-# Setup Forensic Logging (Format removed here as we are logging raw JSON)
 logging.basicConfig(
     filename='quarantine.log',
     level=logging.INFO,
     format='%(message)s' 
 )
 
-# Initialize the Brain
 tracker = BehaviorTracker()
 
 def log_incident(ip, payload, score, reason="THRESHOLD_EXCEEDED"):
@@ -27,7 +24,6 @@ def log_incident(ip, payload, score, reason="THRESHOLD_EXCEEDED"):
         "final_score": score,
         "payload_snippet": payload[:20]
     }
-    # Log as a JSON string
     logging.info(json.dumps(alert))
     print(f"[!] Alert Generated: {json.dumps(alert)}")
 
@@ -44,7 +40,7 @@ def block_ip(ip_address, payload, score):
         log_incident(ip_address, payload, score) 
 
 def start_watcher():
-    print("[*] Quarantine Engine (Structured Forensic Mode) active...")
+    print("[*] Quarantine Engine (Testing Mode) active...")
     with open(LOG_FILE, "r") as f:
         f.seek(0, 2)
         while True:
@@ -57,13 +53,12 @@ def start_watcher():
                 source_ip = data.get('source_ip')
                 payload = data.get("payload", "").lower()
                 
-                # Get the threat score and confidence level
                 score = tracker.analyze_payload(source_ip, payload)
                 confidence = tracker.get_confidence_level(score)
                 
                 print(f"[*] IP: {source_ip} | Score: {score} | Level: {confidence}")
                 
-                # Dynamic Thresholding: Block if score is 15 or higher
+                # UPDATED FOR TESTING: Block if score is 0 or higher
                 if score >= 15:
                     block_ip(source_ip, payload, score)
                     
