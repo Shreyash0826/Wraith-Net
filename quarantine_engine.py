@@ -3,16 +3,23 @@ import time
 import json
 import subprocess
 import logging
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
+# Import your centralized configs
 from config import WHITELIST, THREAT_KEYWORDS, LOG_FILE, QUARANTINE_LOG
+# Import the new Intelligence module
 from intelligence import BehaviorTracker
 
+# Setup Forensic Logging with Rotation
+# maxBytes=1MB, backupCount=3 (keeps up to 3 old logs)
+handler = RotatingFileHandler('quarantine.log', maxBytes=1024*1024, backupCount=3)
 logging.basicConfig(
-    filename='quarantine.log',
+    handlers=[handler],
     level=logging.INFO,
     format='%(message)s' 
 )
 
+# Initialize the Brain
 tracker = BehaviorTracker()
 
 def log_incident(ip, payload, score, reason="THRESHOLD_EXCEEDED"):
@@ -24,6 +31,7 @@ def log_incident(ip, payload, score, reason="THRESHOLD_EXCEEDED"):
         "final_score": score,
         "payload_snippet": payload[:20]
     }
+    # Log as a JSON string
     logging.info(json.dumps(alert))
     print(f"[!] Alert Generated: {json.dumps(alert)}")
 
@@ -40,7 +48,7 @@ def block_ip(ip_address, payload, score):
         log_incident(ip_address, payload, score) 
 
 def start_watcher():
-    print("[*] Quarantine Engine (Testing Mode) active...")
+    print("[*] Quarantine Engine (Resilient Forensic Mode) active...")
     with open(LOG_FILE, "r") as f:
         f.seek(0, 2)
         while True:
@@ -53,12 +61,13 @@ def start_watcher():
                 source_ip = data.get('source_ip')
                 payload = data.get("payload", "").lower()
                 
+                # Get the threat score and confidence level
                 score = tracker.analyze_payload(source_ip, payload)
                 confidence = tracker.get_confidence_level(score)
                 
                 print(f"[*] IP: {source_ip} | Score: {score} | Level: {confidence}")
                 
-                # UPDATED FOR TESTING: Block if score is 0 or higher
+                # Dynamic Thresholding: Block if score is 15 or higher
                 if score >= 15:
                     block_ip(source_ip, payload, score)
                     
