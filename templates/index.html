@@ -6,16 +6,25 @@
 </head>
 <body class="bg-dark text-light">
     <div class="container mt-5">
-        <h1>Wraith-Net Watchtower</h1>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>Wraith-Net Watchtower</h1>
+            <button onclick="clearFirewall()" class="btn btn-danger">Emergency: Clear All Blocks</button>
+        </div>
+
         <table class="table table-dark table-hover mt-4">
             <thead>
                 <tr>
-                    <th>Timestamp</th><th>IP</th><th>Reason</th><th>Confidence</th><th>Actions</th>
+                    <th>Timestamp</th>
+                    <th>IP</th>
+                    <th>Reason</th>
+                    <th>Score</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="alert-body"></tbody>
         </table>
     </div>
+
     <script>
         async function fetchAlerts() {
             const res = await fetch('/api/alerts');
@@ -26,7 +35,7 @@
                     <td>${a.timestamp.split('T')[1].split('.')[0]}</td>
                     <td>${a.ip}</td>
                     <td>${a.reason}</td>
-                    <td><span class="badge ${a.final_score > 15 ? 'bg-danger':'bg-warning'}">${a.final_score}</span></td>
+                    <td><span class="badge ${a.final_score >= 20 ? 'bg-danger' : 'bg-warning'}">${a.final_score}</span></td>
                     <td>
                         <button class="btn btn-sm btn-success" onclick="actionIP('${a.ip}', 'unblock')">Unblock</button>
                         <button class="btn btn-sm btn-info" onclick="actionIP('${a.ip}', 'whitelist')">Whitelist</button>
@@ -39,7 +48,16 @@
             const res = await fetch(`/api/${action}/${ip}`, { method: 'POST' });
             const result = await res.json();
             alert(result.message);
-            fetchAlerts(); 
+            fetchAlerts();
+        }
+
+        async function clearFirewall() {
+            if(confirm("CRITICAL: Are you sure you want to flush all firewall rules?")) {
+                const res = await fetch('/api/clear_all', { method: 'POST' });
+                const result = await res.json();
+                alert(result.message);
+                fetchAlerts();
+            }
         }
 
         setInterval(fetchAlerts, 2000);
